@@ -204,7 +204,7 @@ module Wasi_instance = struct
     let name =
       match name with
       | `wasi_unstable -> "wasi_unstable"
-      | `wasi_snapshot_preview -> "wasi_snapshot_preview"
+      | `wasi_snapshot_preview -> "wasi_snapshot_preview1"
     in
     (* It seems that the rust implementation of wasi_instance_new takes
        ownership of the config via a Box<_>. *)

@@ -18,7 +18,7 @@ let run ~filename =
   let wasi_instance =
     W.Wasi_instance.create
       store
-      `wasi_unstable
+      `wasi_snapshot_preview
       ~inherit_argv:true
       ~inherit_env:true
       ~inherit_stdin:true
