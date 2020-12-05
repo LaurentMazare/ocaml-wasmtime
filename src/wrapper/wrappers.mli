@@ -75,25 +75,18 @@ module Val : sig
   val kind : t -> Kind.t
 end
 
-module Wasi_config : sig
-  type t
-
-  val create : unit -> t
-  val inherit_argv : t -> unit
-  val inherit_env : t -> unit
-  val inherit_stdin : t -> unit
-  val inherit_stdout : t -> unit
-  val inherit_stderr : t -> unit
-  val preopen_dir : t -> string -> string -> unit
-end
-
 module Wasi_instance : sig
   type t
 
   val create
-    :  Store.t
+    :  ?inherit_argv:bool
+    -> ?inherit_env:bool
+    -> ?inherit_stdin:bool
+    -> ?inherit_stdout:bool
+    -> ?inherit_stderr:bool
+    -> ?preopen_dirs:(string * string) list
+    -> Store.t
     -> [ `wasi_unstable | `wasi_snapshot_preview ]
-    -> Wasi_config.t
     -> t
 end
 

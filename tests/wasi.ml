@@ -32,21 +32,21 @@ let wasi_wat =
 )
 |}
 
-let wasi_instance store =
-  let config = W.Wasi_config.create () in
-  W.Wasi_config.inherit_argv config;
-  W.Wasi_config.inherit_env config;
-  W.Wasi_config.inherit_stdin config;
-  W.Wasi_config.inherit_stderr config;
-  W.Wasi_config.inherit_stdout config;
-  W.Wasi_instance.create store `wasi_unstable config
-
 let%expect_test _ =
   let engine = W.Engine.create () in
   let store = W.Store.create engine in
   let wasm = W.Wasmtime.wat_to_wasm ~wat:(W.Byte_vec.of_string wasi_wat) in
   let modl = W.Wasmtime.new_module engine ~wasm in
-  let wasi_instance = wasi_instance store in
+  let wasi_instance =
+    W.Wasi_instance.create
+      store
+      `wasi_unstable
+      ~inherit_argv:true
+      ~inherit_env:true
+      ~inherit_stdin:true
+      ~inherit_stderr:true
+      ~inherit_stdout:true
+  in
   let linker = W.Wasmtime.Linker.create store in
   W.Wasmtime.Linker.define_wasi linker wasi_instance;
   let name = W.Byte_vec.of_string "foo" in

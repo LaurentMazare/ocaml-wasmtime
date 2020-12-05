@@ -187,33 +187,36 @@ module Val = struct
     | Float64 _ -> Kind.Float64
 end
 
-module Wasi_config = struct
-  type t = W.Wasi_config.t
-
-  let create () =
-    let t = W.Wasi_config.new_ () in
-    if Ctypes.is_null t then failwith "Wasi_config.new retuned null";
-    Caml.Gc.finalise W.Wasi_config.delete t;
-    t
-
-  let inherit_argv = W.Wasi_config.inherit_argv
-  let inherit_env = W.Wasi_config.inherit_env
-  let inherit_stdin = W.Wasi_config.inherit_stdin
-  let inherit_stdout = W.Wasi_config.inherit_stdout
-  let inherit_stderr = W.Wasi_config.inherit_stderr
-  let preopen_dir t d1 d2 = ignore (W.Wasi_config.preopen_dir t d1 d2 : bool)
-end
-
 module Wasi_instance = struct
   type t = W.Wasi_instance.t
 
-  let create store name config =
+  let create
+      ?(inherit_argv = false)
+      ?(inherit_env = false)
+      ?(inherit_stdin = false)
+      ?(inherit_stdout = false)
+      ?(inherit_stderr = false)
+      ?(preopen_dirs = [])
+      store
+      name
+    =
     let trap = Ctypes.allocate W.Trap.t (Ctypes.from_voidp W.Trap.struct_ Ctypes.null) in
     let name =
       match name with
       | `wasi_unstable -> "wasi_unstable"
       | `wasi_snapshot_preview -> "wasi_snapshot_preview"
     in
+    (* It seems that the rust implementation of wasi_instance_new takes
+       ownership of the config via a Box<_>. *)
+    let config = W.Wasi_config.new_ () in
+    if Ctypes.is_null config then failwith "Wasi_config.new retuned null";
+    if inherit_argv then W.Wasi_config.inherit_argv config;
+    if inherit_env then W.Wasi_config.inherit_env config;
+    if inherit_stdin then W.Wasi_config.inherit_stdin config;
+    if inherit_stdout then W.Wasi_config.inherit_stdout config;
+    if inherit_stderr then W.Wasi_config.inherit_stderr config;
+    List.iter preopen_dirs ~f:(fun (dir1, dir2) ->
+        ignore (W.Wasi_config.preopen_dir config dir1 dir2 : bool));
     let t = W.Wasi_instance.new_ store name config trap in
     Ctypes.( !@ ) trap |> Trap.maybe_fail;
     if Ctypes.is_null t then failwith "Wasi_instance.new returned null";
