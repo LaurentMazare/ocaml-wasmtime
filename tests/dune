@@ -1,0 +1,5 @@
+(library
+ (name wasmtime_tests)
+ (inline_tests)
+ (libraries sexplib core_kernel core_kernel.caml_unix wasmtime stdio)
+ (preprocess (pps ppx_expect ppx_let ppx_compare ppx_fields_conv ppx_sexp_conv)))
