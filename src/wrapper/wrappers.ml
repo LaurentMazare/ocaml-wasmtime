@@ -108,6 +108,30 @@ end
 
 module Func = struct
   type t = W.Func.t
+
+  let of_func_0_0 store f =
+    let func_type = W.Func_type.new_ () in
+    let callback =
+      let open Ctypes in
+      coerce
+        (Foreign.funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
+        (static_funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
+        (fun _args _results ->
+          (try f () with
+          | _ ->
+            (* TODO: create a trap on errors? *)
+            ());
+          Ctypes.from_voidp W.Trap.struct_ Ctypes.null)
+    in
+    let t = W.Func.new_ store func_type callback in
+    if Ctypes.is_null t then failwith "Func.new returned null";
+    Caml.Gc.finalise
+      (fun t ->
+        keep_alive callback;
+        W.Func_type.delete func_type;
+        W.Func.delete t)
+      t;
+    t
 end
 
 module Memory = struct
@@ -121,7 +145,7 @@ module Extern = struct
 
   let as_memory t =
     let mem = W.Extern.as_memory t in
-    if Ctypes.is_null mem then failwith "as_memory returned null";
+    if Ctypes.is_null mem then failwith "Extern.as_memory returned null";
     (* The returned memory is owned by the extern so there is no need to
     delete it but it only stays alive until t does. *)
     Caml.Gc.finalise (fun _mem -> keep_alive t) mem;
@@ -129,11 +153,19 @@ module Extern = struct
 
   let as_func t =
     let func = W.Extern.as_func t in
-    if Ctypes.is_null func then failwith "as_func returned null";
+    if Ctypes.is_null func then failwith "Extern.as_func returned null";
     (* The returned func is owned by the extern so there is no need to
     delete it but it only stays alive until t does. *)
     Caml.Gc.finalise (fun _func -> keep_alive t) func;
     func
+
+  let func_as func =
+    let t = W.Extern.func_as func in
+    if Ctypes.is_null t then failwith "Extern.func_as returned null";
+    (* The returned func is owned by the func so there is no need to
+    delete it but it only stays alive until t does. *)
+    Caml.Gc.finalise (fun _func -> keep_alive func) t;
+    t
 end
 
 module Val = struct
@@ -256,14 +288,22 @@ module Wasmtime = struct
       modl;
     modl
 
-  let new_instance store modl =
+  let new_instance ?(imports = []) store modl =
     let instance =
       Ctypes.allocate W.Instance.t (Ctypes.from_voidp W.Instance.struct_ Ctypes.null)
     in
     let trap = Ctypes.allocate W.Trap.t (Ctypes.from_voidp W.Trap.struct_ Ctypes.null) in
-    let null_ext = Ctypes.from_voidp W.Extern.t Ctypes.null in
-    W.Wasmtime.new_instance store modl null_ext Unsigned.Size_t.zero instance trap
+    let n_imports = List.length imports |> Unsigned.Size_t.of_int in
+    let imports = Ctypes.CArray.of_list W.Extern.t imports in
+    W.Wasmtime.new_instance
+      store
+      modl
+      (Ctypes.CArray.start imports)
+      n_imports
+      instance
+      trap
     |> fail_on_error;
+    keep_alive imports;
     Ctypes.( !@ ) trap |> Trap.maybe_fail;
     let instance = Ctypes.( !@ ) instance in
     if Ctypes.is_null instance then failwith "new_instance returned null";

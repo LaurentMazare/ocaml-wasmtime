@@ -30,6 +30,8 @@ end
 
 module Func : sig
   type t
+
+  val of_func_0_0 : Store.t -> (unit -> unit) -> t
 end
 
 module Memory : sig
@@ -42,6 +44,7 @@ end
 module Extern : sig
   type t
 
+  val func_as : Func.t -> t
   val as_func : t -> Func.t
   val as_memory : t -> Memory.t
 end
@@ -102,7 +105,7 @@ module Wasmtime : sig
 
   val wat_to_wasm : wat:Byte_vec.t -> Byte_vec.t
   val new_module : Engine.t -> wasm:Byte_vec.t -> Module.t
-  val new_instance : Store.t -> Module.t -> Instance.t
+  val new_instance : ?imports:Extern.t list -> Store.t -> Module.t -> Instance.t
   val func_call0 : Func.t -> Val.t list -> unit
   val func_call1 : Func.t -> Val.t list -> Val.t
   val func_call2 : Func.t -> Val.t list -> Val.t * Val.t
