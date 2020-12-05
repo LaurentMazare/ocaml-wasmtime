@@ -37,8 +37,9 @@ end
 module Memory : sig
   type t
 
-  (* Size in bytes. *)
-  val data_size : t -> int
+  val size_in_pages : t -> int
+  val size_in_bytes : t -> int
+  val grow : t -> int -> bool
 end
 
 module Extern : sig

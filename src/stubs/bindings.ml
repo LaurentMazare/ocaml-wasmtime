@@ -93,6 +93,8 @@ module C (F : Cstubs.FOREIGN) = struct
     let struct_ : struct_ typ = structure "wasm_memory_t"
     let t : t typ = ptr struct_
     let data = foreign "wasm_memory_data" (t @-> returning (ptr char))
+    let grow = foreign "wasm_memory_grow" (t @-> uint32_t @-> returning bool)
+    let size = foreign "wasm_memory_size" (t @-> returning size_t)
     let data_size = foreign "wasm_memory_data_size" (t @-> returning size_t)
     let delete = foreign "wasm_memory_delete" (t @-> returning void)
   end

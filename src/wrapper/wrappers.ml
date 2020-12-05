@@ -146,7 +146,9 @@ end
 module Memory = struct
   type t = W.Memory.t
 
-  let data_size t = W.Memory.data_size t |> Unsigned.Size_t.to_int
+  let size_in_pages t = W.Memory.size t |> Unsigned.Size_t.to_int
+  let size_in_bytes t = W.Memory.data_size t |> Unsigned.Size_t.to_int
+  let grow t size = W.Memory.grow t (Unsigned.UInt32.of_int size)
 end
 
 module Extern = struct
