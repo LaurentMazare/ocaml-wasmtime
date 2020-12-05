@@ -219,7 +219,7 @@ module Wasi_instance = struct
     if Ctypes.is_null t then failwith "Wasi_instance.new returned null";
     Caml.Gc.finalise
       (fun t ->
-        keep_alive store;
+        keep_alive (config, store);
         W.Wasi_instance.delete t)
       t;
     t
