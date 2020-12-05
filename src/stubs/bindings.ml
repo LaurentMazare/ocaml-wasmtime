@@ -22,17 +22,6 @@ module C (F : Cstubs.FOREIGN) = struct
     let delete = foreign "wasm_byte_vec_delete" (t @-> returning void)
   end
 
-  module Trap = struct
-    type modl
-    type struct_ = modl Ctypes.structure
-    type t = struct_ ptr
-
-    let struct_ : struct_ typ = structure "wasm_trap_t"
-    let t : t typ = ptr struct_
-    let message = foreign "wasm_trap_message" (t @-> Byte_vec.t @-> returning void)
-    let delete = foreign "wasm_trap_delete" (t @-> returning void)
-  end
-
   module Engine = struct
     type t = unit ptr
 
@@ -47,6 +36,18 @@ module C (F : Cstubs.FOREIGN) = struct
     let t : t typ = ptr void
     let new_ = foreign "wasm_store_new" (Engine.t @-> returning t)
     let delete = foreign "wasm_store_delete" (t @-> returning void)
+  end
+
+  module Trap = struct
+    type modl
+    type struct_ = modl Ctypes.structure
+    type t = struct_ ptr
+
+    let struct_ : struct_ typ = structure "wasm_trap_t"
+    let t : t typ = ptr struct_
+    let new_ = foreign "wasm_trap_new" (Store.t @-> Byte_vec.t @-> returning t)
+    let message = foreign "wasm_trap_message" (t @-> Byte_vec.t @-> returning void)
+    let delete = foreign "wasm_trap_delete" (t @-> returning void)
   end
 
   module Val = struct

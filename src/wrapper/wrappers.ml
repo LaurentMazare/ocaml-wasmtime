@@ -117,11 +117,20 @@ module Func = struct
         (Foreign.funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
         (static_funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
         (fun _args _results ->
-          (try f () with
-          | _ ->
-            (* TODO: create a trap on errors? *)
-            ());
-          Ctypes.from_voidp W.Trap.struct_ Ctypes.null)
+          try
+            f ();
+            Ctypes.from_voidp W.Trap.struct_ Ctypes.null
+          with
+          | exn ->
+            (* The returned message should end with a 0 byte and the size
+              should reflect this additional byte. *)
+            let byte_vec = Exn.to_string exn ^ "\000" |> Byte_vec.of_string in
+            let trap = W.Trap.new_ store byte_vec in
+            Caml.Gc.finalise
+              (fun _trap ->
+                keep_alive byte_vec (* [trap] is not freed as the ownership is passed. *))
+              trap;
+            trap)
     in
     let t = W.Func.new_ store func_type callback in
     if Ctypes.is_null t then failwith "Func.new returned null";
