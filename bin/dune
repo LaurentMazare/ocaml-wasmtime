@@ -1,0 +1,4 @@
+(executable
+ (name wtime)
+ (modules wtime)
+ (libraries base stdio wasmtime))
