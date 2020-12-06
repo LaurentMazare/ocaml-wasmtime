@@ -149,6 +149,33 @@ module Memory = struct
   let size_in_pages t = W.Memory.size t |> Unsigned.Size_t.to_int
   let size_in_bytes t = W.Memory.data_size t |> Unsigned.Size_t.to_int
   let grow t size = W.Memory.grow t (Unsigned.UInt32.of_int size)
+
+  let to_string t ~pos ~len =
+    if pos < 0 then Printf.sprintf "negative pos %d" pos |> invalid_arg;
+    if len < 0 then Printf.sprintf "negative len %d" len |> invalid_arg;
+    let size_in_bytes = size_in_bytes t in
+    if pos + len > size_in_bytes
+    then
+      Printf.sprintf "pos (%d) + len (%d) > size_in_bytes (%d)" pos len size_in_bytes
+      |> invalid_arg;
+    let ptr = Ctypes.( +@ ) (W.Memory.data t) pos in
+    Ctypes.string_from_ptr ptr ~length:len
+
+  let get t ~pos =
+    if pos < 0 then Printf.sprintf "negative pos %d" pos |> invalid_arg;
+    let size_in_bytes = size_in_bytes t in
+    if pos >= size_in_bytes
+    then Printf.sprintf "pos (%d) >= size_in_bytes (%d)" pos size_in_bytes |> invalid_arg;
+    let ptr = Ctypes.( +@ ) (W.Memory.data t) pos in
+    Ctypes.( !@ ) ptr
+
+  let set t ~pos chr =
+    if pos < 0 then Printf.sprintf "negative pos %d" pos |> invalid_arg;
+    let size_in_bytes = size_in_bytes t in
+    if pos >= size_in_bytes
+    then Printf.sprintf "pos (%d) >= size_in_bytes (%d)" pos size_in_bytes |> invalid_arg;
+    let p = Ctypes.( +@ ) (W.Memory.data t) pos in
+    Ctypes.(p <-@ chr)
 end
 
 module Extern = struct

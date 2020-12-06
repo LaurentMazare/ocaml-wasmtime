@@ -40,6 +40,11 @@ module Memory : sig
   val size_in_pages : t -> int
   val size_in_bytes : t -> int
   val grow : t -> int -> bool
+
+  (* [to_string] makes a copy of the memory data. *)
+  val to_string : t -> pos:int -> len:int -> string
+  val get : t -> pos:int -> char
+  val set : t -> pos:int -> char -> unit
 end
 
 module Extern : sig

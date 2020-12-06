@@ -45,9 +45,17 @@ let%expect_test _ =
       with
       | W.Trap { message = _ } -> "trapped"
     in
-    Stdio.printf "load %x: %s\n" addr value
+    let value_mem =
+      try
+        let memory = W.Memory.to_string memory ~pos:addr ~len:1 in
+        memory.[0] |> Char.to_int |> Int.to_string
+      with
+      | _ -> "exn"
+    in
+    Stdio.printf "load %x: %s %s\n" addr value value_mem
   in
   List.iter [ 0; 0x1000; 0x1002; 0x1003; 0x1ffff; 0x20000 ] ~f:print_addr;
+  W.Memory.set memory ~pos:0x1002 (Char.of_int_exn 5);
   W.Wasmtime.func_call0 store_func [ Int32 0x1003; Int32 6 ];
   List.iter [ 0x1002; 0x1003 ] ~f:print_addr;
   Stdio.printf "grow %b\n" (W.Memory.grow memory 1);
@@ -61,20 +69,20 @@ let%expect_test _ =
     {|
     memory size 2 pages, 131072 bytes (131072)
     size_func returned 2
-    load 0: 0
-    load 1000: 1
-    load 1002: 3
-    load 1003: 4
-    load 1ffff: 0
-    load 20000: trapped
-    load 1002: 3
-    load 1003: 6
+    load 0: 0 0
+    load 1000: 1 1
+    load 1002: 3 3
+    load 1003: 4 4
+    load 1ffff: 0 0
+    load 20000: trapped exn
+    load 1002: 5 5
+    load 1003: 6 6
     grow true
     memory size 3 pages, 196608 bytes (196608)
-    load 0: 0
-    load 1000: 1
-    load 1002: 3
-    load 1003: 6
-    load 1ffff: 0
-    load 20000: 0
-    load 20000: 42 |}]
+    load 0: 0 0
+    load 1000: 1 1
+    load 1002: 5 5
+    load 1003: 6 6
+    load 1ffff: 0 0
+    load 20000: 0 0
+    load 20000: 42 42 |}]
