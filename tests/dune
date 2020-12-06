@@ -1,5 +1,5 @@
 (library
  (name wasmtime_tests)
  (inline_tests)
- (libraries sexplib core_kernel core_kernel.caml_unix wasmtime stdio)
+ (libraries sexplib wasmtime stdio)
  (preprocess (pps ppx_expect)))
