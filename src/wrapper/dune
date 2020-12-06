@@ -1,11 +1,16 @@
 (library
   (name wasmtime)
   (public_name wasmtime)
-  (foreign_stubs (language c) (names wasmtime_stubs) (flags :standard  -I %{project_root}/wasmtime/include))
-  (c_library_flags :standard %{project_root}/wasmtime/lib/libwasmtime.a -lpthread -lm -ldl)
+  (foreign_stubs (language c) (names wasmtime_stubs) (flags :standard  (:include c_flags.sexp)))
+  (c_library_flags :standard (:include c_library_flags.sexp) -lpthread -lm -ldl)
   (libraries base bigarray ctypes ctypes.foreign ctypes.stubs stdio)
   (inline_tests)
   (preprocess (pps ppx_expect)))
+
+(rule
+  (targets c_flags.sexp c_library_flags.sexp)
+  (deps    (:discover ../config/discover.exe))
+  (action  (run %{discover})))
 
 (rule
   (targets bindings.ml)
@@ -14,5 +19,5 @@
 
 (rule
   (targets wasmtime_stubs.c wasmtime_generated.ml)
-  (deps    (:gen ../stubs/gen.exe) %{project_root}/wasmtime/lib/libwasmtime.a (glob_files %{project_root}/wasmtime/include/*.h))
+  (deps    (:gen ../stubs/gen.exe))
   (action  (run %{gen})))
