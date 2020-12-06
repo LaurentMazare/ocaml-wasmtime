@@ -9,32 +9,24 @@ authors:      [ "Laurent Mazare" ]
 version: "dev"
 
 build: [["dune" "build" "-p" name "-j" jobs]]
-install: []
-remove:  []
 
 run-test: [
-  ["dune" "runtest" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] { os-distribution != "alpine" }
 ]
 
 depends: [
-  "base" {>= "0.13.0"}
+  "base" {>= "v0.13.0" & < "v0.15"}
   "ctypes" {>= "0.5"}
   "ctypes-foreign"
   "dune" {>= "2.0.0" build}
   "dune-configurator"
   "libwasmtime" {= "0.0.1"}
   "ocaml" {>= "4.10"}
-  "ppx_expect" { with-test }
+  "ppx_expect" {>= "v0.13.0" & < "v0.15" with-test}
   "stdio"
 ]
 
-depopts: [
-]
-
-conflicts: [
-]
-
-available: [ os = "linux" | os = "macos" ]
+available: arch = "x86_64" & (os = "linux" | os = "macos")
 
 synopsis: "Wasmtime bindings for OCaml"
 description: """
