@@ -92,7 +92,12 @@ module C (F : Cstubs.FOREIGN) = struct
 
     let struct_ : struct_ typ = structure "wasm_memory_t"
     let t : t typ = ptr struct_
-    let data = foreign "wasm_memory_data" (t @-> returning (ptr char))
+
+    let data =
+      (* Note that the returned pointer may be invalidated, e.g. if the
+         memory grows and so is moved. *)
+      foreign "wasm_memory_data" (t @-> returning (ptr char))
+
     let grow = foreign "wasm_memory_grow" (t @-> uint32_t @-> returning bool)
     let size = foreign "wasm_memory_size" (t @-> returning size_t)
     let data_size = foreign "wasm_memory_data_size" (t @-> returning size_t)
