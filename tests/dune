@@ -1,5 +1,5 @@
 (library
  (name wasmtime_tests)
  (inline_tests)
- (libraries sexplib wasmtime stdio)
+ (libraries base wasmtime stdio)
  (preprocess (pps ppx_expect)))
