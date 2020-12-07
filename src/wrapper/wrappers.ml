@@ -420,6 +420,27 @@ module Wasmtime = struct
     let define_wasi t wasi_instance =
       W.Wasmtime.Linker.define_wasi t wasi_instance |> fail_on_error
 
+    let define_instance t ~name instance =
+      W.Wasmtime.Linker.define_instance t name instance |> fail_on_error
+
+    let instantiate t modl =
+      let instance =
+        Ctypes.allocate W.Instance.t (Ctypes.from_voidp W.Instance.struct_ Ctypes.null)
+      in
+      let trap =
+        Ctypes.allocate W.Trap.t (Ctypes.from_voidp W.Trap.struct_ Ctypes.null)
+      in
+      W.Wasmtime.Linker.instantiate t modl instance trap |> fail_on_error;
+      Ctypes.( !@ ) trap |> Trap.maybe_fail;
+      let instance = Ctypes.( !@ ) instance in
+      if Ctypes.is_null instance then failwith "instantiate returned null";
+      Caml.Gc.finalise
+        (fun instance ->
+          keep_alive t;
+          W.Instance.delete instance)
+        instance;
+      instance
+
     let module_ t ~name modl = W.Wasmtime.Linker.module_ t name modl |> fail_on_error
 
     let get_default t ~name =

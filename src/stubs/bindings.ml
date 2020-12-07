@@ -70,6 +70,15 @@ module C (F : Cstubs.FOREIGN) = struct
     let () = seal struct_
     let t : t typ = ptr struct_
     let delete = foreign "wasm_val_delete" (t @-> returning void)
+    let extern_ref = foreign "wasmtime_externref_new" (ptr void @-> t @-> returning void)
+
+    let extern_ref_with_finalizer =
+      foreign
+        "wasmtime_externref_new_with_finalizer"
+        (ptr void
+        @-> static_funptr Ctypes.(ptr void @-> returning void)
+        @-> t
+        @-> returning void)
   end
 
   module Val_vec = struct
@@ -235,6 +244,16 @@ module C (F : Cstubs.FOREIGN) = struct
 
       let define_wasi =
         foreign "wasmtime_linker_define_wasi" (t @-> Wasi_instance.t @-> returning Error.t)
+
+      let define_instance =
+        foreign
+          "wasmtime_linker_define_instance"
+          (t @-> Byte_vec.t @-> Instance.t @-> returning Error.t)
+
+      let instantiate =
+        foreign
+          "wasmtime_linker_instantiate"
+          (t @-> Module.t @-> ptr Instance.t @-> ptr Trap.t @-> returning Error.t)
 
       let module_ =
         foreign

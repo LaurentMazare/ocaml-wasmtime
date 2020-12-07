@@ -105,6 +105,8 @@ module Wasmtime : sig
 
     val create : Store.t -> t
     val define_wasi : t -> Wasi_instance.t -> unit
+    val define_instance : t -> name:Byte_vec.t -> Instance.t -> unit
+    val instantiate : t -> Module.t -> Instance.t
     val module_ : t -> name:Byte_vec.t -> Module.t -> unit
     val get_default : t -> name:Byte_vec.t -> Func.t
   end
