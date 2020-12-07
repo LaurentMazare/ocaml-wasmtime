@@ -11,20 +11,32 @@ to run some basic examples, see the `tests` directory for details.
 
 #### Using Opam
 
-(upcoming, this simpler install version will be available once the opam package has been released)
+The simplest way to install this library is via opam, this installs both
+the C library and the OCcaml bindings.
 
-#### Manual Install
+```bash
+opam install wasmtime
+```
 
+#### Building from source
+
+First the wasmtime C library has to be installed. This can either be done
+via opam.
+```bash
+opam install libwasmtime
+```
+Or this can be done manually.
 - Download the wasmtime c-api library from the [github repo](https://github.com/bytecodealliance/wasmtime/releases).
 - Uncompress the archive and set the `LIBWASTIME` environment variable to point at them.
-- Run `dune runtest` to run the examples.
-
-This can be achieved via the following commands on a linux system:
-
 ```bash
 wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.21.0/wasmtime-v0.21.0-x86_64-linux-c-api.tar.xz
 tar xf wasmtime-v0.21.0-x86_64-linux-c-api.tar.xz
 export LIBWASTIME=$PWD/wasmtime-v0.21.0-x86_64-linux-c-api
+```
+
+Once the C library has been installed and the repo has been checked out, the
+examples can be rune with dune.
+```bash
 dune runtest
 ```
 
