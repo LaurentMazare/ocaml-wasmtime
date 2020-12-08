@@ -120,7 +120,7 @@ module C (F : Cstubs.FOREIGN) = struct
 
     let struct_ : struct_ typ = structure "wasm_functype_t"
     let t : t typ = ptr struct_
-    let new_ = foreign "wasm_functype_new_0_0" (void @-> returning t)
+    let new_0_0 = foreign "wasm_functype_new_0_0" (void @-> returning t)
     let delete = foreign "wasm_functype_delete" (t @-> returning void)
   end
 

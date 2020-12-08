@@ -109,16 +109,15 @@ end
 module Func = struct
   type t = W.Func.t
 
-  let of_func_0_0 store f =
-    let func_type = W.Func_type.new_ () in
+  let of_func store func_type f =
     let callback =
       let open Ctypes in
       coerce
         (Foreign.funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
         (static_funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
-        (fun _args _results ->
+        (fun args results ->
           try
-            f ();
+            f args results;
             Ctypes.from_voidp W.Trap.struct_ Ctypes.null
           with
           | exn ->
@@ -137,10 +136,14 @@ module Func = struct
     Caml.Gc.finalise
       (fun t ->
         keep_alive callback;
-        W.Func_type.delete func_type;
         W.Func.delete t)
       t;
     t
+
+  let of_func_0_0 store f =
+    let func_type = W.Func_type.new_0_0 () in
+    Caml.Gc.finalise (fun func_type -> W.Func_type.delete func_type) func_type;
+    of_func store func_type (fun _args _results -> f ())
 end
 
 module Memory = struct
