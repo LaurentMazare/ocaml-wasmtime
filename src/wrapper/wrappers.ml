@@ -106,6 +106,91 @@ module Instance = struct
         extern)
 end
 
+module Val = struct
+  type t =
+    | Int32 of int
+    | Int64 of int
+    | Float32 of float
+    | Float64 of float
+
+  let int_exn = function
+    | Int32 i | Int64 i -> i
+    | Float32 f -> Printf.failwithf "expected an int, got f32 %f" f ()
+    | Float64 f -> Printf.failwithf "expected an int, got f64 %f" f ()
+
+  let float_exn = function
+    | Int32 i -> Printf.failwithf "expected a float, got i32 %d" i ()
+    | Int64 i -> Printf.failwithf "expected a float, got i64 %d" i ()
+    | Float32 i | Float64 i -> i
+
+  module Kind = struct
+    type t =
+      | Int32
+      | Int64
+      | Float32
+      | Float64
+      | Any_ref
+      | Func_ref
+
+    let to_c = function
+      | Int32 -> 0
+      | Int64 -> 1
+      | Float32 -> 2
+      | Float64 -> 3
+      | Any_ref -> 128
+      | Func_ref -> 129
+
+    let of_c = function
+      | 0 -> Int32
+      | 1 -> Int64
+      | 2 -> Float32
+      | 3 -> Float64
+      | 128 -> Any_ref
+      | 129 -> Func_ref
+      | otherwise -> Printf.failwithf "unexpected Val.kind value %d" otherwise ()
+  end
+
+  let kind = function
+    | Int32 _ -> Kind.Int32
+    | Int64 _ -> Kind.Int64
+    | Float32 _ -> Kind.Float32
+    | Float64 _ -> Kind.Float64
+end
+
+module Func_type = struct
+  type t = W.Func_type.t
+
+  let val_type kind = Val.Kind.to_c kind |> Unsigned.UInt8.of_int |> W.Val_type.new_
+  let val_type_i32 = lazy (val_type Int32)
+  let val_type_i64 = lazy (val_type Int64)
+  let val_type_f32 = lazy (val_type Float32)
+  let val_type_f64 = lazy (val_type Float64)
+  let val_type_any_ref = lazy (val_type Any_ref)
+  let val_type_func_ref = lazy (val_type Func_ref)
+
+  let val_type = function
+    | Val.Kind.Int32 -> Lazy.force val_type_i32
+    | Int64 -> Lazy.force val_type_i64
+    | Float32 -> Lazy.force val_type_f32
+    | Float64 -> Lazy.force val_type_f64
+    | Any_ref -> Lazy.force val_type_any_ref
+    | Func_ref -> Lazy.force val_type_func_ref
+
+  let create ~args ~results =
+    let vec_list l =
+      let l = List.map l ~f:val_type |> Ctypes.CArray.of_list W.Val_type.t in
+      let vec = Ctypes.allocate_n W.Val_type_vec.struct_ ~count:1 in
+      Ctypes.(
+        setf !@vec W.Val_type_vec.size (Ctypes.CArray.length l |> Unsigned.Size_t.of_int));
+      Ctypes.(setf !@vec W.Val_type_vec.data (CArray.start l));
+      Caml.Gc.finalise (fun _ -> keep_alive l) vec;
+      vec
+    in
+    let t = W.Func_type.new_ (vec_list args) (vec_list results) in
+    Caml.Gc.finalise W.Func_type.delete t;
+    t
+end
+
 module Func = struct
   type t = W.Func.t
 
@@ -208,57 +293,6 @@ module Extern = struct
     delete it but it only stays alive until t does. *)
     Caml.Gc.finalise (fun _func -> keep_alive func) t;
     t
-end
-
-module Val = struct
-  type t =
-    | Int32 of int
-    | Int64 of int
-    | Float32 of float
-    | Float64 of float
-
-  let int_exn = function
-    | Int32 i | Int64 i -> i
-    | Float32 f -> Printf.failwithf "expected an int, got f32 %f" f ()
-    | Float64 f -> Printf.failwithf "expected an int, got f64 %f" f ()
-
-  let float_exn = function
-    | Int32 i -> Printf.failwithf "expected a float, got i32 %d" i ()
-    | Int64 i -> Printf.failwithf "expected a float, got i64 %d" i ()
-    | Float32 i | Float64 i -> i
-
-  module Kind = struct
-    type t =
-      | Int32
-      | Int64
-      | Float32
-      | Float64
-      | Any_ref
-      | Func_ref
-
-    let to_c = function
-      | Int32 -> 0
-      | Int64 -> 1
-      | Float32 -> 2
-      | Float64 -> 3
-      | Any_ref -> 128
-      | Func_ref -> 129
-
-    let of_c = function
-      | 0 -> Int32
-      | 1 -> Int64
-      | 2 -> Float32
-      | 3 -> Float64
-      | 128 -> Any_ref
-      | 129 -> Func_ref
-      | otherwise -> Printf.failwithf "unexpected Val.kind value %d" otherwise ()
-  end
-
-  let kind = function
-    | Int32 _ -> Kind.Int32
-    | Int64 _ -> Kind.Int64
-    | Float32 _ -> Kind.Float32
-    | Float64 _ -> Kind.Float64
 end
 
 module Wasi_instance = struct
