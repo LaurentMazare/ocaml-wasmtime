@@ -113,8 +113,8 @@ module Func = struct
     let callback =
       let open Ctypes in
       coerce
-        (Foreign.funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
-        (static_funptr (W.Val_vec.t @-> W.Val_vec.t @-> returning W.Trap.t))
+        (Foreign.funptr (W.Val.t @-> W.Val.t @-> returning W.Trap.t))
+        (static_funptr (W.Val.t @-> W.Val.t @-> returning W.Trap.t))
         (fun args results ->
           try
             f args results;
@@ -136,6 +136,7 @@ module Func = struct
     Caml.Gc.finalise
       (fun t ->
         keep_alive callback;
+        keep_alive func_type;
         W.Func.delete t)
       t;
     t

@@ -94,6 +94,27 @@ module C (F : Cstubs.FOREIGN) = struct
     let delete = foreign "wasm_val_vec_delete" (t @-> returning void)
   end
 
+  module Val_type = struct
+    type t = unit ptr
+
+    let t : t typ = ptr void
+    let new_ = foreign "wasm_valtype_new" (uint8_t @-> returning t)
+    let delete = foreign "wasm_valtype_delete" (t @-> returning void)
+  end
+
+  module Val_type_vec = struct
+    type modl
+    type struct_ = modl Ctypes.structure
+    type t = struct_ ptr
+
+    let struct_ : struct_ typ = structure "wasm_valtype_vec_t"
+    let size = field struct_ "size" size_t
+    let data = field struct_ "data" (ptr Val_type.t)
+    let () = seal struct_
+    let t : t typ = ptr struct_
+    let delete = foreign "wasm_valtype_vec_delete" (t @-> returning void)
+  end
+
   module Memory = struct
     type modl
     type struct_ = modl Ctypes.structure
@@ -120,6 +141,10 @@ module C (F : Cstubs.FOREIGN) = struct
 
     let struct_ : struct_ typ = structure "wasm_functype_t"
     let t : t typ = ptr struct_
+
+    let new_ =
+      foreign "wasm_functype_new" (Val_type_vec.t @-> Val_type_vec.t @-> returning t)
+
     let new_0_0 = foreign "wasm_functype_new_0_0" (void @-> returning t)
     let delete = foreign "wasm_functype_delete" (t @-> returning void)
   end
@@ -137,7 +162,7 @@ module C (F : Cstubs.FOREIGN) = struct
         "wasm_func_new"
         (Store.t
         @-> Func_type.t
-        @-> static_funptr Ctypes.(Val_vec.t @-> Val_vec.t @-> returning Trap.t)
+        @-> static_funptr Ctypes.(Val.t @-> Val.t @-> returning Trap.t)
         @-> returning t)
 
     let delete = foreign "wasm_func_delete" (t @-> returning void)
