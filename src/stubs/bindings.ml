@@ -112,6 +112,10 @@ module C (F : Cstubs.FOREIGN) = struct
     let data = field struct_ "data" (ptr Val_type.t)
     let () = seal struct_
     let t : t typ = ptr struct_
+
+    let new_ =
+      foreign "wasm_valtype_vec_new" (t @-> size_t @-> ptr Val_type.t @-> returning void)
+
     let delete = foreign "wasm_valtype_vec_delete" (t @-> returning void)
   end
 

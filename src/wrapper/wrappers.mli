@@ -61,6 +61,15 @@ module Func : sig
   type t
 
   val of_func_0_0 : Store.t -> (unit -> unit) -> t
+
+  (* TODO: use some GADT to provide some helper functions with nicer
+    types. *)
+  val of_func
+    :  args:Val.Kind.t list
+    -> results:Val.Kind.t list
+    -> Store.t
+    -> (Val.t list -> Val.t list)
+    -> t
 end
 
 module Memory : sig

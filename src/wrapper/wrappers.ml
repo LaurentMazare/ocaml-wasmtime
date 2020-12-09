@@ -155,6 +155,27 @@ module Val = struct
     | Int64 _ -> Kind.Int64
     | Float32 _ -> Kind.Float32
     | Float64 _ -> Kind.Float64
+
+  let of_struct struct_ =
+    let kind = Ctypes.getf struct_ W.Val.kind |> Unsigned.UInt8.to_int |> Kind.of_c in
+    let op = Ctypes.getf struct_ W.Val.op in
+    match kind with
+    | Int32 -> Int32 (Ctypes.getf op W.Val.i32 |> Int32.to_int_exn)
+    | Int64 -> Int64 (Ctypes.getf op W.Val.i64 |> Int64.to_int_exn)
+    | Float32 -> Float32 (Ctypes.getf op W.Val.f32)
+    | Float64 -> Float64 (Ctypes.getf op W.Val.f64)
+    | Any_ref -> failwith "any_ref returned results are not supported"
+    | Func_ref -> failwith "func_ref returned results are not supported"
+
+  let to_struct t struct_ =
+    let kind = kind t |> Kind.to_c |> Unsigned.UInt8.of_int in
+    Ctypes.setf struct_ W.Val.kind kind;
+    let op = Ctypes.getf struct_ W.Val.op in
+    match t with
+    | Int32 i -> Ctypes.setf op W.Val.i32 (Int32.of_int_exn i)
+    | Int64 i -> Ctypes.setf op W.Val.i64 (Int64.of_int_exn i)
+    | Float32 f -> Ctypes.setf op W.Val.f32 f
+    | Float64 f -> Ctypes.setf op W.Val.f64 f
 end
 
 module Func_type = struct
@@ -178,15 +199,16 @@ module Func_type = struct
 
   let create ~args ~results =
     let vec_list l =
-      let l = List.map l ~f:val_type |> Ctypes.CArray.of_list W.Val_type.t in
-      let vec = Ctypes.allocate_n W.Val_type_vec.struct_ ~count:1 in
-      Ctypes.(
-        setf !@vec W.Val_type_vec.size (Ctypes.CArray.length l |> Unsigned.Size_t.of_int));
-      Ctypes.(setf !@vec W.Val_type_vec.data (CArray.start l));
-      Caml.Gc.finalise (fun _ -> keep_alive l) vec;
-      vec
+      let count = List.length l in
+      let vec = Ctypes.allocate_n W.Val_type.t ~count in
+      List.iteri l ~f:(fun idx v -> Ctypes.(vec +@ idx <-@ val_type v));
+      let out = Ctypes.allocate_n W.Val_type_vec.struct_ ~count:1 in
+      W.Val_type_vec.new_ out (Unsigned.Size_t.of_int count) vec;
+      out
     in
-    let t = W.Func_type.new_ (vec_list args) (vec_list results) in
+    let args = vec_list args in
+    let results = vec_list results in
+    let t = W.Func_type.new_ args results in
     Caml.Gc.finalise W.Func_type.delete t;
     t
 end
@@ -230,6 +252,25 @@ module Func = struct
     let func_type = W.Func_type.new_0_0 () in
     Caml.Gc.finalise (fun func_type -> W.Func_type.delete func_type) func_type;
     of_func store func_type (fun _args _results -> f ())
+
+  let of_func ~args ~results store f =
+    let func_type = Func_type.create ~args ~results in
+    Caml.Gc.finalise (fun func_type -> W.Func_type.delete func_type) func_type;
+    of_func store func_type (fun args_val results_val ->
+        let args =
+          List.mapi args ~f:(fun idx _arg_type ->
+              Ctypes.( +@ ) args_val idx |> Ctypes.( !@ ) |> Val.of_struct)
+        in
+        let r = f args in
+        if List.length r <> List.length results
+        then
+          Printf.failwithf
+            "callback returned %d values, expected %d"
+            (List.length r)
+            (List.length results)
+            ();
+        List.iteri r ~f:(fun idx val_ ->
+            Ctypes.( +@ ) results_val idx |> Ctypes.( !@ ) |> Val.to_struct val_))
 end
 
 module Memory = struct
@@ -395,15 +436,7 @@ module Wasmtime = struct
     let n_args = List.length args in
     let args_ = Ctypes.allocate_n W.Val.struct_ ~count:n_args in
     List.iteri args ~f:(fun idx val_ ->
-        let arg_i = Ctypes.( +@ ) args_ idx |> Ctypes.( !@ ) in
-        let kind = Val.kind val_ |> Val.Kind.to_c |> Unsigned.UInt8.of_int in
-        Ctypes.setf arg_i W.Val.kind kind;
-        let op = Ctypes.getf arg_i W.Val.op in
-        match val_ with
-        | Int32 i -> Ctypes.setf op W.Val.i32 (Int32.of_int_exn i)
-        | Int64 i -> Ctypes.setf op W.Val.i64 (Int64.of_int_exn i)
-        | Float32 f -> Ctypes.setf op W.Val.f32 f
-        | Float64 f -> Ctypes.setf op W.Val.f64 f);
+        Ctypes.( +@ ) args_ idx |> Ctypes.( !@ ) |> Val.to_struct val_);
     let outputs = Ctypes.allocate_n W.Val.struct_ ~count:n_outputs in
     W.Wasmtime.func_call
       func
@@ -415,18 +448,7 @@ module Wasmtime = struct
     |> fail_on_error;
     Ctypes.( !@ ) trap |> Trap.maybe_fail;
     List.init n_outputs ~f:(fun idx ->
-        let out_i = Ctypes.( +@ ) outputs idx |> Ctypes.( !@ ) in
-        let kind =
-          Ctypes.getf out_i W.Val.kind |> Unsigned.UInt8.to_int |> Val.Kind.of_c
-        in
-        let op = Ctypes.getf out_i W.Val.op in
-        match kind with
-        | Int32 -> Val.Int32 (Ctypes.getf op W.Val.i32 |> Int32.to_int_exn)
-        | Int64 -> Val.Int64 (Ctypes.getf op W.Val.i64 |> Int64.to_int_exn)
-        | Float32 -> Val.Float32 (Ctypes.getf op W.Val.f32)
-        | Float64 -> Val.Float64 (Ctypes.getf op W.Val.f64)
-        | Any_ref -> failwith "any_ref returned results are not supported"
-        | Func_ref -> failwith "func_ref returned results are not supported")
+        Ctypes.( +@ ) outputs idx |> Ctypes.( !@ ) |> Val.of_struct)
 
   let func_call0 func args =
     match func_call func args ~n_outputs:0 with
