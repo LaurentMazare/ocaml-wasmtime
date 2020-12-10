@@ -1,5 +1,6 @@
 open! Base
 module W = Wasmtime.Wrappers
+module V = Wasmtime.Val
 
 let memory_wat =
   {|
@@ -36,12 +37,12 @@ let%expect_test _ =
   let page_size = W.Memory.size_in_pages memory in
   let byte_size = W.Memory.size_in_bytes memory in
   Stdio.printf "memory size %d pages, %d bytes (%d)\n%!" page_size byte_size 0x20000;
-  let size = W.Wasmtime.func_call1 size_func [] |> W.Val.int_exn in
+  let size = W.Wasmtime.func_call1 size_func [] |> V.int_exn in
   Stdio.printf "size_func returned %d\n%!" size;
   let print_addr addr =
     let value =
       try
-        W.Wasmtime.func_call1 load_func [ Int32 addr ] |> W.Val.int_exn |> Int.to_string
+        W.Wasmtime.func_call1 load_func [ Int32 addr ] |> V.int_exn |> Int.to_string
       with
       | W.Trap { message = _ } -> "trapped"
     in

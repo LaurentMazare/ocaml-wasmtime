@@ -1,5 +1,6 @@
 open! Base
 module W = Wasmtime.Wrappers
+module V = Wasmtime.Val
 
 let multi_wat =
   {|
@@ -46,6 +47,6 @@ let%expect_test _ =
     | _ -> failwith "expected two externs to be returned"
   in
   let v1, v2 = W.Wasmtime.func_call2 g_func [ Int32 6; Int64 27 ] in
-  Stdio.printf "f returned (%d, %d)\n%!" (W.Val.int_exn v1) (W.Val.int_exn v2);
+  Stdio.printf "f returned (%d, %d)\n%!" (V.int_exn v1) (V.int_exn v2);
   [%expect {|
     f returned (54, 7) |}]

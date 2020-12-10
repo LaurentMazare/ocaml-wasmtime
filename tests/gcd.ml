@@ -1,5 +1,6 @@
 open! Base
 module W = Wasmtime.Wrappers
+module V = Wasmtime.Val
 
 (* Test using the low-level API. *)
 let gcd_wat =
@@ -46,7 +47,7 @@ let%expect_test _ =
     | _ -> failwith "expected a single extern to be returned"
   in
   let res = W.Wasmtime.func_call1 gcd_func [ Int32 6; Int32 27 ] in
-  Stdio.printf "gcd returned %d\n%!" (W.Val.int_exn res);
+  Stdio.printf "gcd returned %d\n%!" (V.int_exn res);
   [%expect {|
     here 91
     gcd returned 3 |}]

@@ -106,61 +106,29 @@ module Instance = struct
         extern)
 end
 
-module Val = struct
-  type t =
-    | Int32 of int
-    | Int64 of int
-    | Float32 of float
-    | Float64 of float
+module V = struct
+  let kind_to_c = function
+    | Val.Kind.Int32 -> 0
+    | Int64 -> 1
+    | Float32 -> 2
+    | Float64 -> 3
+    | Any_ref -> 128
+    | Func_ref -> 129
 
-  let int_exn = function
-    | Int32 i | Int64 i -> i
-    | Float32 f -> Printf.failwithf "expected an int, got f32 %f" f ()
-    | Float64 f -> Printf.failwithf "expected an int, got f64 %f" f ()
-
-  let float_exn = function
-    | Int32 i -> Printf.failwithf "expected a float, got i32 %d" i ()
-    | Int64 i -> Printf.failwithf "expected a float, got i64 %d" i ()
-    | Float32 i | Float64 i -> i
-
-  module Kind = struct
-    type t =
-      | Int32
-      | Int64
-      | Float32
-      | Float64
-      | Any_ref
-      | Func_ref
-
-    let to_c = function
-      | Int32 -> 0
-      | Int64 -> 1
-      | Float32 -> 2
-      | Float64 -> 3
-      | Any_ref -> 128
-      | Func_ref -> 129
-
-    let of_c = function
-      | 0 -> Int32
-      | 1 -> Int64
-      | 2 -> Float32
-      | 3 -> Float64
-      | 128 -> Any_ref
-      | 129 -> Func_ref
-      | otherwise -> Printf.failwithf "unexpected Val.kind value %d" otherwise ()
-  end
-
-  let kind = function
-    | Int32 _ -> Kind.Int32
-    | Int64 _ -> Kind.Int64
-    | Float32 _ -> Kind.Float32
-    | Float64 _ -> Kind.Float64
+  let kind_of_c = function
+    | 0 -> Val.Kind.Int32
+    | 1 -> Int64
+    | 2 -> Float32
+    | 3 -> Float64
+    | 128 -> Any_ref
+    | 129 -> Func_ref
+    | otherwise -> Printf.failwithf "unexpected Val.kind value %d" otherwise ()
 
   let of_struct struct_ =
-    let kind = Ctypes.getf struct_ W.Val.kind |> Unsigned.UInt8.to_int |> Kind.of_c in
+    let kind = Ctypes.getf struct_ W.Val.kind |> Unsigned.UInt8.to_int |> kind_of_c in
     let op = Ctypes.getf struct_ W.Val.op in
-    match kind with
-    | Int32 -> Int32 (Ctypes.getf op W.Val.i32 |> Int32.to_int_exn)
+    match (kind : Val.Kind.t) with
+    | Int32 -> Val.Int32 (Ctypes.getf op W.Val.i32 |> Int32.to_int_exn)
     | Int64 -> Int64 (Ctypes.getf op W.Val.i64 |> Int64.to_int_exn)
     | Float32 -> Float32 (Ctypes.getf op W.Val.f32)
     | Float64 -> Float64 (Ctypes.getf op W.Val.f64)
@@ -168,7 +136,7 @@ module Val = struct
     | Func_ref -> failwith "func_ref returned results are not supported"
 
   let to_struct t struct_ =
-    let kind = kind t |> Kind.to_c |> Unsigned.UInt8.of_int in
+    let kind = Val.kind t |> kind_to_c |> Unsigned.UInt8.of_int in
     Ctypes.setf struct_ W.Val.kind kind;
     let op = Ctypes.getf struct_ W.Val.op in
     match t with
@@ -181,7 +149,7 @@ end
 module Func_type = struct
   type t = W.Func_type.t
 
-  let val_type kind = Val.Kind.to_c kind |> Unsigned.UInt8.of_int |> W.Val_type.new_
+  let val_type kind = V.kind_to_c kind |> Unsigned.UInt8.of_int |> W.Val_type.new_
   let val_type_i32 = lazy (val_type Int32)
   let val_type_i64 = lazy (val_type Int64)
   let val_type_f32 = lazy (val_type Float32)
@@ -259,7 +227,7 @@ module Func = struct
     of_func store func_type (fun args_val results_val ->
         let args =
           List.mapi args ~f:(fun idx _arg_type ->
-              Ctypes.( +@ ) args_val idx |> Ctypes.( !@ ) |> Val.of_struct)
+              Ctypes.( +@ ) args_val idx |> Ctypes.( !@ ) |> V.of_struct)
         in
         let r = f args in
         if List.length r <> List.length results
@@ -270,7 +238,7 @@ module Func = struct
             (List.length results)
             ();
         List.iteri r ~f:(fun idx val_ ->
-            Ctypes.( +@ ) results_val idx |> Ctypes.( !@ ) |> Val.to_struct val_))
+            Ctypes.( +@ ) results_val idx |> Ctypes.( !@ ) |> V.to_struct val_))
 end
 
 module Memory = struct
@@ -436,7 +404,7 @@ module Wasmtime = struct
     let n_args = List.length args in
     let args_ = Ctypes.allocate_n W.Val.struct_ ~count:n_args in
     List.iteri args ~f:(fun idx val_ ->
-        Ctypes.( +@ ) args_ idx |> Ctypes.( !@ ) |> Val.to_struct val_);
+        Ctypes.( +@ ) args_ idx |> Ctypes.( !@ ) |> V.to_struct val_);
     let outputs = Ctypes.allocate_n W.Val.struct_ ~count:n_outputs in
     W.Wasmtime.func_call
       func
@@ -448,7 +416,7 @@ module Wasmtime = struct
     |> fail_on_error;
     Ctypes.( !@ ) trap |> Trap.maybe_fail;
     List.init n_outputs ~f:(fun idx ->
-        Ctypes.( +@ ) outputs idx |> Ctypes.( !@ ) |> Val.of_struct)
+        Ctypes.( +@ ) outputs idx |> Ctypes.( !@ ) |> V.of_struct)
 
   let func_call0 func args =
     match func_call func args ~n_outputs:0 with
