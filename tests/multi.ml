@@ -35,10 +35,11 @@ let%expect_test _ =
   let wasm = W.Wasmtime.wat_to_wasm ~wat:(W.Byte_vec.of_string multi_wat) in
   let modl = W.Wasmtime.new_module engine ~wasm in
   let f =
-    W.Func.of_func ~args:[ Int32; Int64 ] ~results:[ Int64; Int32 ] store (fun args ->
-        match args with
-        | [ Int32 i1; Int64 i2 ] -> [ Int64 (i2 * 2); Int32 (i1 + 1) ]
-        | _ -> failwith "unexpected argument types")
+    W.Func.of_func
+      ~args:(W.Kind.t2 Int32 Int64)
+      ~results:(W.Kind.t2 Int64 Int32)
+      store
+      (fun (i1, i2) -> i2 * 2, i1 + 1)
   in
   let instance = W.Wasmtime.new_instance ~imports:[ W.Extern.func_as f ] store modl in
   let g_func, _rt_func =

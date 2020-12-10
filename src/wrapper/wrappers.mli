@@ -28,20 +28,30 @@ module Module : sig
   type t
 end
 
-module Func_type : sig
-  type t
+module Kind : sig
+  type 'a t =
+    | Int32 : int t
+    | Int64 : int t
+    | Float32 : float t
+    | Float64 : float t
 
-  val create : args:Val.Kind.t list -> results:Val.Kind.t list -> t
+  type _ tuple
+
+  val t0 : unit tuple
+  val t1 : 'a t -> 'a tuple
+  val t2 : 'a t -> 'b t -> ('a * 'b) tuple
+  val t3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) tuple
+  val t4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) tuple
+  val t5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) tuple
 end
 
 module Func : sig
   type t
 
   val of_func_0_0 : Store.t -> (unit -> unit) -> t
+  val of_func : args:'a Kind.tuple -> results:'b Kind.tuple -> Store.t -> ('a -> 'b) -> t
 
-  (* TODO: use some GADT to provide some helper functions with nicer
-    types. *)
-  val of_func
+  val of_func_list
     :  args:Val.Kind.t list
     -> results:Val.Kind.t list
     -> Store.t
