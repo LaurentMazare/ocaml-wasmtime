@@ -47,7 +47,13 @@ let%expect_test _ =
     | [ g; round_trip_many ] -> W.Extern.as_func g, W.Extern.as_func round_trip_many
     | _ -> failwith "expected two externs to be returned"
   in
-  let v1, v2 = W.Wasmtime.func_call2 g_func [ Int32 6; Int64 27 ] in
-  Stdio.printf "f returned (%d, %d)\n%!" (V.int_exn v1) (V.int_exn v2);
+  let v1, v2 =
+    W.Wasmtime.func_call
+      ~args:(W.Kind.t2 Int32 Int64)
+      ~results:(W.Kind.t2 Int64 Int32)
+      g_func
+      (6, 27)
+  in
+  Stdio.printf "f returned (%d, %d)\n%!" v1 v2;
   [%expect {|
     f returned (54, 7) |}]

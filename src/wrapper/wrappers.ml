@@ -174,6 +174,14 @@ module Kind = struct
   let t4 a b c d = T4 (a, b, c, d)
   let t5 a b c d e = T5 (a, b, c, d, e)
 
+  let arity : type a. a tuple -> int = function
+    | T0 -> 0
+    | T1 _ -> 1
+    | T2 _ -> 2
+    | T3 _ -> 3
+    | T4 _ -> 4
+    | T5 _ -> 5
+
   let tuple_to_valtype (type a) (tuple : a tuple) =
     match tuple with
     | T0 -> []
@@ -524,7 +532,7 @@ module Wasmtime = struct
       instance;
     instance
 
-  let func_call func args ~n_outputs =
+  let func_call_list func args ~n_outputs =
     let trap = Ctypes.allocate W.Trap.t (Ctypes.from_voidp W.Trap.struct_ Ctypes.null) in
     let n_args = List.length args in
     let args_ = Ctypes.allocate_n W.Val.struct_ ~count:n_args in
@@ -544,19 +552,24 @@ module Wasmtime = struct
         Ctypes.( +@ ) outputs idx |> Ctypes.( !@ ) |> V.of_struct)
 
   let func_call0 func args =
-    match func_call func args ~n_outputs:0 with
+    match func_call_list func args ~n_outputs:0 with
     | [] -> ()
     | l -> Printf.failwithf "expected no output, got %d" (List.length l) ()
 
   let func_call1 func args =
-    match func_call func args ~n_outputs:1 with
+    match func_call_list func args ~n_outputs:1 with
     | [ res ] -> res
     | l -> Printf.failwithf "expected a single output, got %d" (List.length l) ()
 
   let func_call2 func args =
-    match func_call func args ~n_outputs:2 with
+    match func_call_list func args ~n_outputs:2 with
     | [ res1; res2 ] -> res1, res2
     | l -> Printf.failwithf "expected two outputs, got %d" (List.length l) ()
+
+  let func_call ~args ~results func input_tuple =
+    Kind.wrap_as_tuple args input_tuple
+    |> func_call_list func ~n_outputs:(Kind.arity results)
+    |> Kind.wrap_tuple results
 
   module Linker = struct
     type t = W.Wasmtime.Linker.t

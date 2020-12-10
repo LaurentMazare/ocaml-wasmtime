@@ -119,5 +119,6 @@ module Wasmtime : sig
   val func_call0 : Func.t -> Val.t list -> unit
   val func_call1 : Func.t -> Val.t list -> Val.t
   val func_call2 : Func.t -> Val.t list -> Val.t * Val.t
-  val func_call : Func.t -> Val.t list -> n_outputs:int -> Val.t list
+  val func_call : args:'a Kind.tuple -> results:'b Kind.tuple -> Func.t -> 'a -> 'b
+  val func_call_list : Func.t -> Val.t list -> n_outputs:int -> Val.t list
 end
