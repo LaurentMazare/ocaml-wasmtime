@@ -36,8 +36,8 @@ let%expect_test _ =
   let modl = W.Wasmtime.new_module engine ~wasm in
   let f =
     W.Func.of_func
-      ~args:(W.Kind.t2 Int32 Int64)
-      ~results:(W.Kind.t2 Int64 Int32)
+      ~args:(V.Kind.t2 Int32 Int64)
+      ~results:(V.Kind.t2 Int64 Int32)
       store
       (fun (i1, i2) -> i2 * 2, i1 + 1)
   in
@@ -49,8 +49,8 @@ let%expect_test _ =
   in
   let v1, v2 =
     W.Wasmtime.func_call
-      ~args:(W.Kind.t2 Int32 Int64)
-      ~results:(W.Kind.t2 Int64 Int32)
+      ~args:(V.Kind.t2 Int32 Int64)
+      ~results:(V.Kind.t2 Int64 Int32)
       g_func
       (6, 27)
   in

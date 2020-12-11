@@ -28,32 +28,21 @@ module Module : sig
   type t
 end
 
-module Kind : sig
-  type 'a t =
-    | Int32 : int t
-    | Int64 : int t
-    | Float32 : float t
-    | Float64 : float t
-
-  type _ tuple
-
-  val t0 : unit tuple
-  val t1 : 'a t -> 'a tuple
-  val t2 : 'a t -> 'b t -> ('a * 'b) tuple
-  val t3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) tuple
-  val t4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) tuple
-  val t5 : 'a t -> 'b t -> 'c t -> 'd t -> 'e t -> ('a * 'b * 'c * 'd * 'e) tuple
-end
-
 module Func : sig
   type t
 
   val of_func_0_0 : Store.t -> (unit -> unit) -> t
-  val of_func : args:'a Kind.tuple -> results:'b Kind.tuple -> Store.t -> ('a -> 'b) -> t
+
+  val of_func
+    :  args:'a Val.Kind.tuple
+    -> results:'b Val.Kind.tuple
+    -> Store.t
+    -> ('a -> 'b)
+    -> t
 
   val of_func_list
-    :  args:Val.Kind.t list
-    -> results:Val.Kind.t list
+    :  args:Val.Kind.packed list
+    -> results:Val.Kind.packed list
     -> Store.t
     -> (Val.t list -> Val.t list)
     -> t
@@ -119,6 +108,13 @@ module Wasmtime : sig
   val func_call0 : Func.t -> Val.t list -> unit
   val func_call1 : Func.t -> Val.t list -> Val.t
   val func_call2 : Func.t -> Val.t list -> Val.t * Val.t
-  val func_call : args:'a Kind.tuple -> results:'b Kind.tuple -> Func.t -> 'a -> 'b
+
+  val func_call
+    :  args:'a Val.Kind.tuple
+    -> results:'b Val.Kind.tuple
+    -> Func.t
+    -> 'a
+    -> 'b
+
   val func_call_list : Func.t -> Val.t list -> n_outputs:int -> Val.t list
 end

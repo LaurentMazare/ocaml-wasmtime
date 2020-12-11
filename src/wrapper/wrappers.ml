@@ -108,32 +108,32 @@ end
 
 module V = struct
   let kind_to_c = function
-    | Val.Kind.Int32 -> 0
-    | Int64 -> 1
-    | Float32 -> 2
-    | Float64 -> 3
-    | Any_ref -> 128
-    | Func_ref -> 129
+    | Val.Kind.P Int32 -> 0
+    | P Int64 -> 1
+    | P Float32 -> 2
+    | P Float64 -> 3
+    | P Any_ref -> 128
+    | P Func_ref -> 129
 
   let kind_of_c = function
-    | 0 -> Val.Kind.Int32
-    | 1 -> Int64
-    | 2 -> Float32
-    | 3 -> Float64
-    | 128 -> Any_ref
-    | 129 -> Func_ref
+    | 0 -> Val.Kind.P Int32
+    | 1 -> P Int64
+    | 2 -> P Float32
+    | 3 -> P Float64
+    | 128 -> P Any_ref
+    | 129 -> P Func_ref
     | otherwise -> Printf.failwithf "unexpected Val.kind value %d" otherwise ()
 
   let of_struct struct_ =
     let kind = Ctypes.getf struct_ W.Val.kind |> Unsigned.UInt8.to_int |> kind_of_c in
     let op = Ctypes.getf struct_ W.Val.op in
-    match (kind : Val.Kind.t) with
-    | Int32 -> Val.Int32 (Ctypes.getf op W.Val.i32 |> Int32.to_int_exn)
-    | Int64 -> Int64 (Ctypes.getf op W.Val.i64 |> Int64.to_int_exn)
-    | Float32 -> Float32 (Ctypes.getf op W.Val.f32)
-    | Float64 -> Float64 (Ctypes.getf op W.Val.f64)
-    | Any_ref -> failwith "any_ref returned results are not supported"
-    | Func_ref -> failwith "func_ref returned results are not supported"
+    match (kind : Val.Kind.packed) with
+    | P Int32 -> Val.Int32 (Ctypes.getf op W.Val.i32 |> Int32.to_int_exn)
+    | P Int64 -> Int64 (Ctypes.getf op W.Val.i64 |> Int64.to_int_exn)
+    | P Float32 -> Float32 (Ctypes.getf op W.Val.f32)
+    | P Float64 -> Float64 (Ctypes.getf op W.Val.f64)
+    | P Any_ref -> failwith "any_ref returned results are not supported"
+    | P Func_ref -> failwith "func_ref returned results are not supported"
 
   let to_struct t struct_ =
     let kind = Val.kind t |> kind_to_c |> Unsigned.UInt8.of_int in
@@ -146,149 +146,22 @@ module V = struct
     | Float64 f -> Ctypes.setf op W.Val.f64 f
 end
 
-module Kind = struct
-  type 'a t =
-    | Int32 : int t
-    | Int64 : int t
-    | Float32 : float t
-    | Float64 : float t
-
-  let wrap_t : type a. a t -> Val.Kind.t = function
-    | Int32 -> Val.Kind.Int32
-    | Int64 -> Val.Kind.Int64
-    | Float32 -> Val.Kind.Float32
-    | Float64 -> Val.Kind.Float64
-
-  type _ tuple =
-    | T0 : unit tuple
-    | T1 : 'a t -> 'a tuple
-    | T2 : 'a t * 'b t -> ('a * 'b) tuple
-    | T3 : 'a t * 'b t * 'c t -> ('a * 'b * 'c) tuple
-    | T4 : 'a t * 'b t * 'c t * 'd t -> ('a * 'b * 'c * 'd) tuple
-    | T5 : 'a t * 'b t * 'c t * 'd t * 'e t -> ('a * 'b * 'c * 'd * 'e) tuple
-
-  let t0 = T0
-  let t1 a = T1 a
-  let t2 a b = T2 (a, b)
-  let t3 a b c = T3 (a, b, c)
-  let t4 a b c d = T4 (a, b, c, d)
-  let t5 a b c d e = T5 (a, b, c, d, e)
-
-  let arity : type a. a tuple -> int = function
-    | T0 -> 0
-    | T1 _ -> 1
-    | T2 _ -> 2
-    | T3 _ -> 3
-    | T4 _ -> 4
-    | T5 _ -> 5
-
-  let tuple_to_valtype (type a) (tuple : a tuple) =
-    match tuple with
-    | T0 -> []
-    | T1 a -> [ wrap_t a ]
-    | T2 (a, b) -> [ wrap_t a; wrap_t b ]
-    | T3 (a, b, c) -> [ wrap_t a; wrap_t b; wrap_t c ]
-    | T4 (a, b, c, d) -> [ wrap_t a; wrap_t b; wrap_t c; wrap_t d ]
-    | T5 (a, b, c, d, e) -> [ wrap_t a; wrap_t b; wrap_t c; wrap_t d; wrap_t e ]
-
-  let wrap_value (type a) (t : a t) (v : a) =
-    match t with
-    | Int32 -> Val.Int32 v
-    | Int64 -> Val.Int64 v
-    | Float32 -> Val.Float32 v
-    | Float64 -> Val.Float64 v
-
-  let wrap_tuple : type a. a tuple -> Val.t list -> a =
-   fun tuple list ->
-    let wrap_value : type b. b t -> Val.t -> b =
-     fun t v ->
-      let type_mismatch ~expected =
-        let type_ =
-          match v with
-          | Int32 _ -> "int32"
-          | Int64 _ -> "int64"
-          | Float32 _ -> "float32"
-          | Float64 _ -> "float64"
-        in
-        Printf.failwithf "type mismatch: expected %s, got %s" expected type_ ()
-      in
-      match t, v with
-      | Int32, Int32 i -> i
-      | Int32, _ -> type_mismatch ~expected:"int32"
-      | Int64, Int64 i -> i
-      | Int64, _ -> type_mismatch ~expected:"int64"
-      | Float32, Float32 f -> f
-      | Float32, _ -> type_mismatch ~expected:"float32"
-      | Float64, Float64 f -> f
-      | Float64, _ -> type_mismatch ~expected:"float64"
-    in
-    let len_mismatch ~expected =
-      Printf.failwithf
-        "size mismatch: expected %d elements, got %d"
-        expected
-        (List.length list)
-        ()
-    in
-    match tuple, list with
-    | T0, [] -> ()
-    | T0, _ -> len_mismatch ~expected:0
-    | T1 t, [ v ] -> wrap_value t v
-    | T1 _, _ -> len_mismatch ~expected:1
-    | T2 (t0, t1), [ v0; v1 ] -> wrap_value t0 v0, wrap_value t1 v1
-    | T2 _, _ -> len_mismatch ~expected:2
-    | T3 (t0, t1, t2), [ v0; v1; v2 ] ->
-      wrap_value t0 v0, wrap_value t1 v1, wrap_value t2 v2
-    | T3 _, _ -> len_mismatch ~expected:3
-    | T4 (t0, t1, t2, t3), [ v0; v1; v2; v3 ] ->
-      wrap_value t0 v0, wrap_value t1 v1, wrap_value t2 v2, wrap_value t3 v3
-    | T4 _, _ -> len_mismatch ~expected:4
-    | T5 (t0, t1, t2, t3, t4), [ v0; v1; v2; v3; v4 ] ->
-      ( wrap_value t0 v0
-      , wrap_value t1 v1
-      , wrap_value t2 v2
-      , wrap_value t3 v3
-      , wrap_value t4 v4 )
-    | T5 _, _ -> len_mismatch ~expected:5
-
-  let wrap_as_tuple (type a) (tuple : a tuple) (v : a) =
-    match tuple with
-    | T0 -> []
-    | T1 t -> [ wrap_value t v ]
-    | T2 (t0, t1) ->
-      let v0, v1 = v in
-      [ wrap_value t0 v0; wrap_value t1 v1 ]
-    | T3 (t0, t1, t2) ->
-      let v0, v1, v2 = v in
-      [ wrap_value t0 v0; wrap_value t1 v1; wrap_value t2 v2 ]
-    | T4 (t0, t1, t2, t3) ->
-      let v0, v1, v2, v3 = v in
-      [ wrap_value t0 v0; wrap_value t1 v1; wrap_value t2 v2; wrap_value t3 v3 ]
-    | T5 (t0, t1, t2, t3, t4) ->
-      let v0, v1, v2, v3, v4 = v in
-      [ wrap_value t0 v0
-      ; wrap_value t1 v1
-      ; wrap_value t2 v2
-      ; wrap_value t3 v3
-      ; wrap_value t4 v4
-      ]
-end
-
 module Func_type = struct
   let val_type kind = V.kind_to_c kind |> Unsigned.UInt8.of_int |> W.Val_type.new_
-  let val_type_i32 = lazy (val_type Int32)
-  let val_type_i64 = lazy (val_type Int64)
-  let val_type_f32 = lazy (val_type Float32)
-  let val_type_f64 = lazy (val_type Float64)
-  let val_type_any_ref = lazy (val_type Any_ref)
-  let val_type_func_ref = lazy (val_type Func_ref)
+  let val_type_i32 = lazy (val_type (P Int32))
+  let val_type_i64 = lazy (val_type (P Int64))
+  let val_type_f32 = lazy (val_type (P Float32))
+  let val_type_f64 = lazy (val_type (P Float64))
+  let val_type_any_ref = lazy (val_type (P Any_ref))
+  let val_type_func_ref = lazy (val_type (P Func_ref))
 
   let val_type = function
-    | Val.Kind.Int32 -> Lazy.force val_type_i32
-    | Int64 -> Lazy.force val_type_i64
-    | Float32 -> Lazy.force val_type_f32
-    | Float64 -> Lazy.force val_type_f64
-    | Any_ref -> Lazy.force val_type_any_ref
-    | Func_ref -> Lazy.force val_type_func_ref
+    | Val.Kind.P Int32 -> Lazy.force val_type_i32
+    | P Int64 -> Lazy.force val_type_i64
+    | P Float32 -> Lazy.force val_type_f32
+    | P Float64 -> Lazy.force val_type_f64
+    | P Any_ref -> Lazy.force val_type_any_ref
+    | P Func_ref -> Lazy.force val_type_func_ref
 
   let create ~args ~results =
     let vec_list l =
@@ -367,11 +240,11 @@ module Func = struct
 
   let of_func ~args ~results store f =
     of_func_list
-      ~args:(Kind.tuple_to_valtype args)
-      ~results:(Kind.tuple_to_valtype results)
+      ~args:(Val.Kind.pack_tuple args)
+      ~results:(Val.Kind.pack_tuple results)
       store
       (fun input_tuple ->
-        Kind.wrap_tuple args input_tuple |> f |> Kind.wrap_as_tuple results)
+        Val.Kind.unwrap_tuple args input_tuple |> f |> Val.Kind.wrap_tuple results)
 end
 
 module Memory = struct
@@ -567,9 +440,9 @@ module Wasmtime = struct
     | l -> Printf.failwithf "expected two outputs, got %d" (List.length l) ()
 
   let func_call ~args ~results func input_tuple =
-    Kind.wrap_as_tuple args input_tuple
-    |> func_call_list func ~n_outputs:(Kind.arity results)
-    |> Kind.wrap_tuple results
+    Val.Kind.wrap_tuple args input_tuple
+    |> func_call_list func ~n_outputs:(Val.Kind.arity results)
+    |> Val.Kind.unwrap_tuple results
 
   module Linker = struct
     type t = W.Wasmtime.Linker.t
