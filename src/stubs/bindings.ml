@@ -95,9 +95,12 @@ module C (F : Cstubs.FOREIGN) = struct
   end
 
   module Val_type = struct
-    type t = unit ptr
+    type modl
+    type struct_ = modl Ctypes.structure
+    type t = struct_ ptr
 
-    let t : t typ = ptr void
+    let struct_ : struct_ typ = structure "wasm_valtype_t"
+    let t : t typ = ptr struct_
     let new_ = foreign "wasm_valtype_new" (uint8_t @-> returning t)
     let delete = foreign "wasm_valtype_delete" (t @-> returning void)
   end
@@ -172,6 +175,32 @@ module C (F : Cstubs.FOREIGN) = struct
     let delete = foreign "wasm_func_delete" (t @-> returning void)
   end
 
+  module Global = struct
+    type t = unit ptr
+
+    let t : t typ = ptr void
+    let get = foreign "wasm_global_get" (t @-> Val.t @-> returning void)
+    let set = foreign "wasm_global_set" (t @-> Val.t @-> returning void)
+    let delete = foreign "wasm_global_delete" (t @-> returning void)
+  end
+
+  module Ref = struct
+    type t = unit ptr
+
+    let t : t typ = ptr void
+    let delete = foreign "wasm_ref_delete" (t @-> returning void)
+  end
+
+  module Table = struct
+    type t = unit ptr
+
+    let t : t typ = ptr void
+    let get = foreign "wasm_table_get" (t @-> uint32_t @-> returning Ref.t)
+    let set = foreign "wasm_table_set" (t @-> uint32_t @-> Ref.t @-> returning void)
+    let size = foreign "wasm_table_size" (t @-> returning uint32_t)
+    let delete = foreign "wasm_table_delete" (t @-> returning void)
+  end
+
   module Extern = struct
     type modl
     type struct_ = modl Ctypes.structure
@@ -183,6 +212,8 @@ module C (F : Cstubs.FOREIGN) = struct
     let as_func = foreign "wasm_extern_as_func" (t @-> returning Func.t)
     let func_as = foreign "wasm_func_as_extern" (Func.t @-> returning t)
     let as_memory = foreign "wasm_extern_as_memory" (t @-> returning Memory.t)
+    let as_table = foreign "wasm_extern_as_table" (t @-> returning Table.t)
+    let as_global = foreign "wasm_extern_as_global" (t @-> returning Global.t)
   end
 
   module Extern_vec = struct
