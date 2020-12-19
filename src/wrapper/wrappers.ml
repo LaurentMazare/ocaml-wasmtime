@@ -116,25 +116,24 @@ module Instance = struct
 
   let exports t =
     let extern_vec = Ctypes.allocate_n W.Extern_vec.struct_ ~count:1 in
-    Caml.Gc.finalise
-      (fun extern_vec ->
-        keep_alive t;
-        W.Extern_vec.delete extern_vec)
-      extern_vec;
     W.Instance.exports t extern_vec;
     let extern_vec = Ctypes.( !@ ) extern_vec in
     let size = Ctypes.getf extern_vec W.Extern_vec.size |> Unsigned.Size_t.to_int in
     let data = Ctypes.getf extern_vec W.Extern_vec.data in
-    List.init size ~f:(fun i ->
-        let extern = Ctypes.( +@ ) data i in
-        if Ctypes.is_null extern then failwith "exports returned null";
-        let extern = Ctypes.( !@ ) extern in
-        Caml.Gc.finalise
-          (fun extern ->
-            keep_alive t;
-            W.Extern.delete extern)
-          extern;
-        extern)
+    let externs =
+      List.init size ~f:(fun i ->
+          let extern = Ctypes.( +@ ) data i in
+          if Ctypes.is_null extern then failwith "exports returned null";
+          let extern = Ctypes.( !@ ) extern in
+          Caml.Gc.finalise
+            (fun extern ->
+              keep_alive t;
+              W.Extern.delete extern)
+            extern;
+          extern)
+    in
+    keep_alive t;
+    externs
 end
 
 module V = struct

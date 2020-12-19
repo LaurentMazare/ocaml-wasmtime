@@ -20,5 +20,11 @@ let%expect_test _ =
   let store = W.Store.create engine in
   let wasm = W.Wasmtime.wat_to_wasm ~wat:(W.Byte_vec.of_string wat) in
   let modl = W.Wasmtime.new_module engine ~wasm in
-  let _instance = W.Wasmtime.new_instance store modl in
+  let instance = W.Wasmtime.new_instance store modl in
+  let _func =
+    match W.Instance.exports instance with
+    | [ _table; _global; extern ] -> W.Extern.as_func extern
+    | exports ->
+      Printf.failwithf "expected a single extern, got %d" (List.length exports) ()
+  in
   [%expect {| |}]
