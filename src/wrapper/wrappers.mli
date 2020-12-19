@@ -6,7 +6,19 @@ exception Trap of { message : string }
 module Engine : sig
   type t
 
-  val create : unit -> t
+  val create
+    :  ?debug_info:bool
+    -> ?interruptable:bool
+    -> ?max_wasm_stack:int
+    -> ?reference_types:bool
+    -> ?simd:bool
+    -> ?bulk_memory:bool
+    -> ?multi_value:bool
+    -> ?static_memory_maximum_size:int
+    -> ?static_memory_guard_size:int
+    -> ?dynamic_memory_guard_size:int
+    -> unit
+    -> t
 end
 
 module Store : sig

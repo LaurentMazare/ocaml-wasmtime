@@ -13,8 +13,39 @@ let rec keep_alive o = if zero <> 0 then keep_alive (Sys.opaque_identity o)
 module Engine = struct
   type t = W.Engine.t
 
-  let create () =
-    let t = W.Engine.new_ () in
+  let create
+      ?debug_info
+      ?interruptable
+      ?max_wasm_stack
+      ?reference_types
+      ?simd
+      ?bulk_memory
+      ?multi_value
+      ?static_memory_maximum_size
+      ?static_memory_guard_size
+      ?dynamic_memory_guard_size
+      ()
+    =
+    let config =
+      let t = W.Config.new_ () in
+      Option.iter debug_info ~f:(W.Wasmtime.Config.debug_info_set t);
+      Option.iter interruptable ~f:(W.Wasmtime.Config.interruptable_set t);
+      Option.iter max_wasm_stack ~f:(fun sz ->
+          Unsigned.Size_t.of_int sz |> W.Wasmtime.Config.max_wasm_stack_set t);
+      Option.iter reference_types ~f:(W.Wasmtime.Config.reference_types_set t);
+      Option.iter simd ~f:(W.Wasmtime.Config.simd_set t);
+      Option.iter bulk_memory ~f:(W.Wasmtime.Config.bulk_memory_set t);
+      Option.iter multi_value ~f:(W.Wasmtime.Config.multi_value_set t);
+      Option.iter static_memory_maximum_size ~f:(fun sz ->
+          Int64.of_int sz |> W.Wasmtime.Config.static_memory_maximum_size_set t);
+      Option.iter static_memory_guard_size ~f:(fun sz ->
+          Int64.of_int sz |> W.Wasmtime.Config.static_memory_guard_size_set t);
+      Option.iter dynamic_memory_guard_size ~f:(fun sz ->
+          Int64.of_int sz |> W.Wasmtime.Config.dynamic_memory_guard_size_set t);
+      (* The ownership of the config is passed so no finalizer is added. *)
+      t
+    in
+    let t = W.Engine.new_with_config config in
     if Ctypes.is_null t then failwith "Engine.new_ returned null";
     Caml.Gc.finalise W.Engine.delete t;
     t

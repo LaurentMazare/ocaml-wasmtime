@@ -22,11 +22,20 @@ module C (F : Cstubs.FOREIGN) = struct
     let delete = foreign "wasm_byte_vec_delete" (t @-> returning void)
   end
 
+  module Config = struct
+    type t = unit ptr
+
+    let t : t typ = ptr void
+    let new_ = foreign "wasm_config_new" (void @-> returning t)
+    let delete = foreign "wasm_config_delete" (t @-> returning void)
+  end
+
   module Engine = struct
     type t = unit ptr
 
     let t : t typ = ptr void
     let new_ = foreign "wasm_engine_new" (void @-> returning t)
+    let new_with_config = foreign "wasm_engine_new_with_config" (Config.t @-> returning t)
     let delete = foreign "wasm_engine_delete" (t @-> returning void)
   end
 
@@ -324,6 +333,55 @@ module C (F : Cstubs.FOREIGN) = struct
         foreign
           "wasmtime_linker_get_default"
           (t @-> Byte_vec.t @-> ptr Func.t @-> returning Error.t)
+    end
+
+    module Config = struct
+      let debug_info_set =
+        foreign "wasmtime_config_debug_info_set" (Config.t @-> bool @-> returning void)
+
+      let interruptable_set =
+        foreign "wasmtime_config_interruptable_set" (Config.t @-> bool @-> returning void)
+
+      let max_wasm_stack_set =
+        foreign
+          "wasmtime_config_max_wasm_stack_set"
+          (Config.t @-> size_t @-> returning void)
+
+      let threads_set =
+        foreign "wasmtime_config_wasm_threads_set" (Config.t @-> bool @-> returning void)
+
+      let reference_types_set =
+        foreign
+          "wasmtime_config_wasm_reference_types_set"
+          (Config.t @-> bool @-> returning void)
+
+      let simd_set =
+        foreign "wasmtime_config_wasm_simd_set" (Config.t @-> bool @-> returning void)
+
+      let bulk_memory_set =
+        foreign
+          "wasmtime_config_wasm_bulk_memory_set"
+          (Config.t @-> bool @-> returning void)
+
+      let multi_value_set =
+        foreign
+          "wasmtime_config_wasm_multi_value_set"
+          (Config.t @-> bool @-> returning void)
+
+      let static_memory_maximum_size_set =
+        foreign
+          "wasmtime_config_static_memory_maximum_size_set"
+          (Config.t @-> int64_t @-> returning void)
+
+      let static_memory_guard_size_set =
+        foreign
+          "wasmtime_config_static_memory_guard_size_set"
+          (Config.t @-> int64_t @-> returning void)
+
+      let dynamic_memory_guard_size_set =
+        foreign
+          "wasmtime_config_dynamic_memory_guard_size_set"
+          (Config.t @-> int64_t @-> returning void)
     end
 
     let wat2wasm =
