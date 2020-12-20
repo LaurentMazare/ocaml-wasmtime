@@ -4,6 +4,7 @@ module T : sig
     | Int64 of int
     | Float32 of float
     | Float64 of float
+    | Extern_ref of Extern_ref.t
 end
 
 include module type of T with type t = T.t

@@ -78,8 +78,9 @@ module C (F : Cstubs.FOREIGN) = struct
     let op = field struct_ "op" op_typ
     let () = seal struct_
     let t : t typ = ptr struct_
+    let copy = foreign "wasm_val_copy" (t @-> t @-> returning void)
     let delete = foreign "wasm_val_delete" (t @-> returning void)
-    let extern_ref = foreign "wasmtime_externref_new" (ptr void @-> t @-> returning void)
+    let extern_ref = foreign "wasmtime_externref_new" (string @-> t @-> returning void)
 
     let extern_ref_with_finalizer =
       foreign

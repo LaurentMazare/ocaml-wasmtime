@@ -21,10 +21,19 @@ let%expect_test _ =
   let wasm = W.Wasmtime.wat_to_wasm ~wat:(W.Byte_vec.of_string wat) in
   let modl = W.Wasmtime.new_module engine ~wasm in
   let instance = W.Wasmtime.new_instance store modl in
-  let _func =
+  let _table, _global, func =
     match W.Instance.exports instance with
-    | [ _table; _global; extern ] -> W.Extern.as_func extern
+    | [ table; global; extern ] -> table, global, W.Extern.as_func extern
     | exports ->
       Printf.failwithf "expected a single extern, got %d" (List.length exports) ()
   in
+  let externref = Wasmtime.Extern_ref.of_string "hello world!" in
+  (try
+     let res =
+       (* Extern-ref are not handled as a return value at the moment. *)
+       W.Wasmtime.func_call1 func [ Extern_ref externref ]
+     in
+     Stdio.printf "func returned %d\n%!" (V.int_exn res)
+   with
+  | _ -> ());
   [%expect {| |}]

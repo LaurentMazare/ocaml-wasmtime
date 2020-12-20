@@ -1,4 +1,5 @@
 open! Base
+open! Import
 
 module T = struct
   type t =
@@ -6,6 +7,7 @@ module T = struct
     | Int64 of int
     | Float32 of float
     | Float64 of float
+    | Extern_ref of Extern_ref.t
 end
 
 include T
@@ -14,11 +16,13 @@ let int_exn = function
   | Int32 i | Int64 i -> i
   | Float32 f -> Printf.failwithf "expected an int, got f32 %f" f ()
   | Float64 f -> Printf.failwithf "expected an int, got f64 %f" f ()
+  | Extern_ref _ -> failwith "expected an int, got extern_ref"
 
 let float_exn = function
   | Int32 i -> Printf.failwithf "expected a float, got i32 %d" i ()
   | Int64 i -> Printf.failwithf "expected a float, got i64 %d" i ()
   | Float32 i | Float64 i -> i
+  | Extern_ref _ -> failwith "expected an int, got extern_ref"
 
 module Kind = struct
   type any_ref
@@ -86,6 +90,7 @@ module Kind = struct
           | Int64 _ -> "int64"
           | Float32 _ -> "float32"
           | Float64 _ -> "float64"
+          | Extern_ref _ -> "externref"
         in
         Printf.failwithf "type mismatch: expected %s, got %s" expected type_ ()
       in
@@ -157,3 +162,4 @@ let kind = function
   | Int64 _ -> P Int64
   | Float32 _ -> P Float32
   | Float64 _ -> P Float64
+  | Extern_ref _ -> P Any_ref

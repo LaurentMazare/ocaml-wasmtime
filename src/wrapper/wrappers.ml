@@ -1,14 +1,7 @@
 open Base
-module W = Bindings.C (Wasmtime_generated)
+open Import
 
 exception Trap of { message : string }
-
-(* Taken from [Core_kernel.Gc]. *)
-let zero = Sys.opaque_identity (Caml.int_of_string "0")
-
-(* The compiler won't optimize int_of_string away so it won't
-   perform constant folding below. *)
-let rec keep_alive o = if zero <> 0 then keep_alive (Sys.opaque_identity o)
 
 module Engine = struct
   type t = W.Engine.t
@@ -174,6 +167,12 @@ module V = struct
     | Int64 i -> Ctypes.setf op W.Val.i64 (Int64.of_int_exn i)
     | Float32 f -> Ctypes.setf op W.Val.f32 f
     | Float64 f -> Ctypes.setf op W.Val.f64 f
+    | Extern_ref _ -> assert false
+
+  let copy t ptr =
+    match (t : Val.t) with
+    | Extern_ref extern_ref -> W.Val.copy ptr (Extern_ref.Private.ptr extern_ref)
+    | _ -> Ctypes.( !@ ) ptr |> to_struct t
 end
 
 module Func_type = struct
@@ -265,8 +264,7 @@ module Func = struct
             (List.length r)
             (List.length results)
             ();
-        List.iteri r ~f:(fun idx val_ ->
-            Ctypes.( +@ ) results_val idx |> Ctypes.( !@ ) |> V.to_struct val_))
+        List.iteri r ~f:(fun idx val_ -> V.copy val_ (Ctypes.( +@ ) results_val idx)))
 
   let of_func ~args ~results store f =
     of_func_list
@@ -439,8 +437,7 @@ module Wasmtime = struct
     let trap = Ctypes.allocate W.Trap.t (Ctypes.from_voidp W.Trap.struct_ Ctypes.null) in
     let n_args = List.length args in
     let args_ = Ctypes.allocate_n W.Val.struct_ ~count:n_args in
-    List.iteri args ~f:(fun idx val_ ->
-        Ctypes.( +@ ) args_ idx |> Ctypes.( !@ ) |> V.to_struct val_);
+    List.iteri args ~f:(fun idx val_ -> V.copy val_ (Ctypes.( +@ ) args_ idx));
     let outputs = Ctypes.allocate_n W.Val.struct_ ~count:n_outputs in
     W.Wasmtime.func_call
       func
