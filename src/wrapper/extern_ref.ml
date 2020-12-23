@@ -10,5 +10,6 @@ let of_string str =
   t
 
 module Private = struct
-  let ptr = Fn.id
+  let to_val = Fn.id
+  let of_val = Fn.id
 end

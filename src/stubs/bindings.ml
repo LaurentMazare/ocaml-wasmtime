@@ -89,6 +89,9 @@ module C (F : Cstubs.FOREIGN) = struct
         @-> static_funptr Ctypes.(ptr void @-> returning void)
         @-> t
         @-> returning void)
+
+    let extern_ref_data =
+      foreign "wasmtime_externref_data" (t @-> ptr (ptr void) @-> returning bool)
   end
 
   module Val_vec = struct

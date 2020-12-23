@@ -147,7 +147,8 @@ module V = struct
     | 129 -> P Func_ref
     | otherwise -> Printf.failwithf "unexpected Val.kind value %d" otherwise ()
 
-  let of_struct struct_ =
+  let of_ptr ptr =
+    let struct_ = Ctypes.( !@ ) ptr in
     let kind = Ctypes.getf struct_ W.Val.kind |> Unsigned.UInt8.to_int |> kind_of_c in
     let op = Ctypes.getf struct_ W.Val.op in
     match (kind : Val.Kind.packed) with
@@ -155,7 +156,7 @@ module V = struct
     | P Int64 -> Int64 (Ctypes.getf op W.Val.i64 |> Int64.to_int_exn)
     | P Float32 -> Float32 (Ctypes.getf op W.Val.f32)
     | P Float64 -> Float64 (Ctypes.getf op W.Val.f64)
-    | P Any_ref -> failwith "any_ref returned results are not supported"
+    | P Any_ref -> Extern_ref (Extern_ref.Private.of_val ptr)
     | P Func_ref -> failwith "func_ref returned results are not supported"
 
   let to_struct t struct_ =
@@ -171,7 +172,7 @@ module V = struct
 
   let copy t ptr =
     match (t : Val.t) with
-    | Extern_ref extern_ref -> W.Val.copy ptr (Extern_ref.Private.ptr extern_ref)
+    | Extern_ref extern_ref -> W.Val.copy ptr (Extern_ref.Private.to_val extern_ref)
     | _ -> Ctypes.( !@ ) ptr |> to_struct t
 end
 
@@ -253,8 +254,7 @@ module Func = struct
     Caml.Gc.finalise (fun func_type -> W.Func_type.delete func_type) func_type;
     of_func store func_type (fun args_val results_val ->
         let args =
-          List.mapi args ~f:(fun idx _arg_type ->
-              Ctypes.( +@ ) args_val idx |> Ctypes.( !@ ) |> V.of_struct)
+          List.mapi args ~f:(fun idx _arg_type -> Ctypes.( +@ ) args_val idx |> V.of_ptr)
         in
         let r = f args in
         if List.length r <> List.length results
@@ -448,8 +448,7 @@ module Wasmtime = struct
       trap
     |> fail_on_error;
     Ctypes.( !@ ) trap |> Trap.maybe_fail;
-    List.init n_outputs ~f:(fun idx ->
-        Ctypes.( +@ ) outputs idx |> Ctypes.( !@ ) |> V.of_struct)
+    List.init n_outputs ~f:(fun idx -> Ctypes.( +@ ) outputs idx |> V.of_ptr)
 
   let func_call0 func args =
     match func_call_list func args ~n_outputs:0 with

@@ -28,12 +28,5 @@ let%expect_test _ =
       Printf.failwithf "expected a single extern, got %d" (List.length exports) ()
   in
   let externref = Wasmtime.Extern_ref.of_string "hello world!" in
-  (try
-     let res =
-       (* Extern-ref are not handled as a return value at the moment. *)
-       W.Wasmtime.func_call1 func [ Extern_ref externref ]
-     in
-     Stdio.printf "func returned %d\n%!" (V.int_exn res)
-   with
-  | _ -> ());
+  let _ref = W.Wasmtime.func_call1 func [ Extern_ref externref ] in
   [%expect {| |}]
