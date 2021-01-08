@@ -29,9 +29,9 @@ Or this can be done manually.
 - Download the wasmtime c-api library from the [github repo](https://github.com/bytecodealliance/wasmtime/releases).
 - Uncompress the archive and set the `LIBWASTIME` environment variable to point at them.
 ```bash
-wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.21.0/wasmtime-v0.21.0-x86_64-linux-c-api.tar.xz
-tar xf wasmtime-v0.21.0-x86_64-linux-c-api.tar.xz
-export LIBWASTIME=$PWD/wasmtime-v0.21.0-x86_64-linux-c-api
+wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.22.0/wasmtime-v0.22.0-x86_64-linux-c-api.tar.xz
+tar xf wasmtime-v0.22.0-x86_64-linux-c-api.tar.xz
+export LIBWASTIME=$PWD/wasmtime-v0.22.0-x86_64-linux-c-api
 ```
 
 Once the C library has been installed and the repo has been checked out, the
@@ -41,4 +41,4 @@ dune runtest
 ```
 
 
-This has been tested with wasmtime v0.21.0 on a linux platform.
+This has been tested with wasmtime v0.21.0 and v0.22.0 on a linux platform.
