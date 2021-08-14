@@ -35,7 +35,7 @@ export LIBWASTIME=$PWD/wasmtime-v0.22.0-x86_64-linux-c-api
 ```
 
 Once the C library has been installed and the repo has been checked out, the
-examples can be rune with dune.
+examples can be run with dune.
 ```bash
 dune runtest
 ```
