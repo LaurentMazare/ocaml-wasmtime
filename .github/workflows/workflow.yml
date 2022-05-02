@@ -12,24 +12,20 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-        ocaml-version:
-          - 4.11.0
-          - 4.10.1
+        ocaml-compiler:
+          - 4.10.x
+          - 4.14.x
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
-
-      - run: opam pin add wasmtime.dev . --no-action
-
-      - run: opam depext wasmtime --yes --with-doc --with-test
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
       - run: opam install . --deps-only --with-doc --with-test
 
